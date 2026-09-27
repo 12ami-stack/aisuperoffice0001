@@ -97,12 +97,6 @@
             cursor: pointer;
             text-align: center;
         }
-        #exhaust-drink-icon.disabled {
-            border-color: #777;
-            opacity: 0.6;
-            animation: none;
-            cursor: not-allowed;
-        }
         @keyframes bounce {
             from { transform: translateY(0); }
             to { transform: translateY(-8px); }
@@ -111,7 +105,7 @@
 </head>
 <body>
     <h1>AI時代の給料泥棒シミュレーター</h1>
-    <div class="description">あなたは最強のAIを裏で動かす天才（泥棒）。自分は何もしなくても画面上のタスクはAIが全自動処理！<br>ただし、上司（👹）の視界に引っかかると不審度が上昇します。上司の視界にいる時は**スペースキー長押し**または**画面長押し**をして「必死にやってるフリ」をしろ！ただし、長押ししすぎると体力と気力が切れて疲労困憊になります。</div>
+    <div class="description">あなたは最強のAIを裏で動かす天才（泥棒）。自分は何もしなくても画面上のタスクはAIが全自動処理！<br>ただし、上司（👹）の視界に引っかかると不審度が上昇します。上司は基本「外回り（壁付近）」を巡回しますが、稼ぎが増えると「内回り」に変化して近づいてきます！</div>
     
     <div style="position: relative;">
         <div id="game-container">
@@ -120,13 +114,13 @@
                 <div id="player" class="entity">🧑‍💻</div>
                 <div id="boss" class="entity">👹</div>
                 <div class="boss-sight" id="sight"></div>
-                <!-- 疲労困憊時に右下に表示される🧃アイコンと金額表示 -->
-                <div id="exhaust-drink-icon" title="クリックまたはEnterキーで使用">
+                <!-- 所持金が500円以上の時に右下に常時表示される🧃アイコン -->
+                <div id="exhaust-drink-icon" title="クリックまたはEnterキーで使用（体力・気力全回復 ＆ 上司の巡回経路が変化）">
                     <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
                         <span>🧃</span>
                         <span id="drink-price-tag" style="font-size: 18px; font-weight: bold; color: #ffeb3b;">¥500</span>
                     </div>
-                    <span id="drink-sub-text" style="font-size: 13px; display: block; color: #ffeb3b; margin-top: 2px;">[Enter] 回復</span>
+                    <span id="drink-sub-text" style="font-size: 13px; display: block; color: #ffeb3b; margin-top: 2px;">[Enter] 飲む</span>
                 </div>
             </div>
             <div id="side-panel">
@@ -151,24 +145,26 @@
         </div>
         <div id="overlay">
             <h2 id="overlay-title" style="font-size:36px;">給料泥棒、業務開始</h2>
-            <p id="overlay-desc" style="font-size:21px;">黙って座っているだけで、AIが毎秒お金を稼ぎます。<br><span style="font-size: 17px; color: #aaa; margin-top: 10px; display: inline-block;">([Enter]キー または ボタンでスタート)</span></p>
+            <p id="overlay-desc" style="font-size:21px;">黙って座っているだけで, AIが毎秒お金を稼ぎます。<br><span style="font-size: 17px; color: #aaa; margin-top: 10px; display: inline-block;">([Enter]キー または ボタンでスタート)</span></p>
             <button id="start-btn">出勤する</button>
         </div>
     </div>
     
-    <div id="controls-info"><strong>【操作方法】</strong><br>上司(👹)の視界の中にあなたの席(🖥️)が入ると不審度が上昇します。<br>上司の視界にいる間、<span class="key">スペースキー</span> または <span class="key">画面長押し</span> で「仕事やってるフリ（タイピング）」をしてください。<br>※疲労困憊（動けない状態）になった時、<span class="key">Enterキー</span> または右下の <span class="key">🧃アイコン</span> を押すと500円払ってエナジードリンク（🧃）で1回だけ即時回復できます！（所持金が500円未満の場合は使用不可）</div>
+    <div id="controls-info"><strong>【操作方法】</strong><br>上司(👹)の視界の中にあなたの席(🖥️)が入ると不審度が上昇します。<br>上司の視界にいる間、<span class="key">スペースキー</span> または <span class="key">画面長押し</span> で「仕事やってるフリ（タイピング）」をしてください。<br>※所持金が500円以上ある時はいつでも、<span class="key">Enterキー</span> または右下の <span class="key">🧃アイコン</span> を押すと500円で体力・気力を全回復し、さらに**上司の巡回経路がランダムにシャッフル**されます！</div>
 
     <script>
         let gameActive = false, isGameOver = false, score = 0, suspicion = 0, stamina = 100, willpower = 100, isHolding = false, isExhausted = false, exhaustedTimer = 0, currentTaskProgress = 0, currentTaskName = "";
-        let hasDrinkUsed = false;
-        const boss = { x: 30, y: 30, targetX: 30, targetY: 30, speed: 1.5 };
+        
+        // 上司の巡回・追跡用パラメータ
+        const boss = { x: 30, y: 30, speed: 1.5 };
+        let wallAngle = 0; 
+        let bossRouteSeed = 1.0; // ドリンクでランダム変動する巡回係数
+
         const playerPos = { x: 270, y: 330 }, deskPos = { x: 270, y: 270 };
         const aiTasks = ["コアビジネス戦略の自動AI生成...", "顧客データベースのサイレント同期...", "社内日報のAIディープフェイク自動提出...", "売上予測の超高速でっち上げ中...", "無駄な会議資料の全自動スライド生成...", "AIによる競合他社の自動ディスブランディング..."];
         
         const elBoss = document.getElementById('boss'), elSight = document.getElementById('sight'), elPlayer = document.getElementById('player'), elTaskName = document.getElementById('task-name'), elSuspicionText = document.getElementById('suspicion-text'), elStaminaBar = document.getElementById('stamina-bar'), elStaminaText = document.getElementById('stamina-text'), elWillBar = document.getElementById('will-bar'), elWillText = document.getElementById('will-text'), elScore = document.getElementById('score'), elPcScreen = document.getElementById('pc-screen'), elOverlay = document.getElementById('overlay'), elOverlayTitle = document.getElementById('overlay-title'), elOverlayDesc = document.getElementById('overlay-desc'), elStartBtn = document.getElementById('start-btn'), floor = document.getElementById('office-floor');
         const elExhaustDrinkIcon = document.getElementById('exhaust-drink-icon');
-        const elDrinkPriceTag = document.getElementById('drink-price-tag');
-        const elDrinkSubText = document.getElementById('drink-sub-text');
         
         const totalCells = 20;
         const elSuspicionContainer = document.getElementById('suspicion-container');
@@ -200,9 +196,9 @@
         }
         
         function startGame() { 
-            score = 0; suspicion = 0; stamina = 100; willpower = 100; isHolding = false; isExhausted = false; exhaustedTimer = 0; isGameOver = false; hasDrinkUsed = false;
-            boss.x = 30; boss.y = 30; gameActive = true; elOverlay.style.display = 'none'; 
-            elExhaustDrinkIcon.style.display = 'none';
+            score = 0; suspicion = 0; stamina = 100; willpower = 100; isHolding = false; isExhausted = false; exhaustedTimer = 0; isGameOver = false;
+            boss.x = 30; boss.y = 30; wallAngle = 0; bossRouteSeed = 1.0;
+            gameActive = true; elOverlay.style.display = 'none'; 
             elScore.innerText = `¥${score.toLocaleString()}`;
             nextTask(); 
             addLog("給料泥棒セッションが開始されました。"); 
@@ -222,18 +218,21 @@
         }
 
         function tryUseDrink() {
-            if (!gameActive || !isExhausted || hasDrinkUsed) return;
+            if (!gameActive) return;
             
             if (score >= 500) {
-                hasDrinkUsed = true;
                 score -= 500;
                 elScore.innerText = `¥${score.toLocaleString()}`;
                 stamina = 100;
                 willpower = 100;
                 isExhausted = false;
                 exhaustedTimer = 0;
-                elExhaustDrinkIcon.style.display = 'none';
-                addLog("🧃 エナジードリンクを一気飲み！体力・気力が完全回復しました！（-¥500）");
+                
+                // ドリンクを飲むと上司の巡回経路（シードや初期角度）をランダムに変更
+                bossRouteSeed = 0.5 + Math.random() * 1.5;
+                wallAngle += Math.random() * Math.PI * 2;
+                
+                addLog("🧃 エナジードリンクを一気飲み！体力・気力全回復 ＆ 上司の巡回経路がランダムに変化しました！（-¥500）");
             } else {
                 addLog("⚠️ 所持金が不足しています (¥500必要)！エナジードリンクが買えません！");
             }
@@ -250,7 +249,7 @@
                 e.preventDefault();
                 if(!gameActive) {
                     startGame();
-                } else if(gameActive && isExhausted && !hasDrinkUsed) {
+                } else if(gameActive) {
                     tryUseDrink();
                 }
             }
@@ -274,17 +273,28 @@
         window.addEventListener('touchend', () => { isHolding = false; });
 
         function updateBoss() { 
-            const distToTarget = Math.hypot(boss.targetX - boss.x, boss.targetY - boss.y); 
-            if (distToTarget < 10 || Math.random() < 0.005) { 
-                if(Math.random() < 0.3) { 
-                    boss.targetX = deskPos.x; boss.targetY = deskPos.y + 60; 
-                } else { 
-                    boss.targetX = Math.random() * 540; boss.targetY = Math.random() * 540; 
-                } 
-            } 
-            const angle = Math.atan2(boss.targetY - boss.y, boss.targetX - boss.x); 
+            // 基本は外回り（壁付近を大きく旋回する半径）
+            wallAngle += 0.01 * bossRouteSeed;
+            const cx = 270, cy = 270;
+            const rx = 270, ry = 270; // 外回り用の大きい半径
+            let targetX = cx + Math.cos(wallAngle) * rx;
+            let targetY = cy + Math.sin(wallAngle) * ry;
+
+            // 所持金（スコア）が増えると、外回りから「内回り（自機・デスクに近づく軌道）」へと変化する
+            const attractionFactor = Math.min(score / 4000, 0.70); 
+            if (attractionFactor > 0) {
+                const innerRx = 120, innerRy = 120;
+                let innerTargetX = cx + Math.cos(wallAngle * 1.5) * innerRx;
+                let innerTargetY = cy + Math.sin(wallAngle * 1.5) * innerRy;
+                
+                targetX = targetX * (1 - attractionFactor) + innerTargetX * attractionFactor;
+                targetY = targetY * (1 - attractionFactor) + innerTargetY * attractionFactor;
+            }
+
+            const angle = Math.atan2(targetY - boss.y, targetX - boss.x); 
             boss.x += Math.cos(angle) * boss.speed; 
             boss.y += Math.sin(angle) * boss.speed; 
+            
             elBoss.style.left = boss.x + 'px'; 
             elBoss.style.top = boss.y + 'px'; 
             
@@ -304,38 +314,23 @@
                 addLog("【完了】AIが成果物を勝手に提出しました。給与発生！"); 
                 nextTask(); 
             } 
+
+            // 所持金が500円以上のときだけドリンクアイコンを表示
+            if (score >= 500) {
+                elExhaustDrinkIcon.style.display = 'block';
+            } else {
+                elExhaustDrinkIcon.style.display = 'none';
+            }
             
             if (isExhausted) {
                 exhaustedTimer -= 0.5;
                 elPlayer.innerText = "😵‍💫";
                 isHolding = false;
-                
-                if (!hasDrinkUsed) {
-                    elExhaustDrinkIcon.style.display = 'block';
-                    
-                    if (score >= 500) {
-                        elExhaustDrinkIcon.classList.remove('disabled');
-                        elDrinkPriceTag.innerText = "¥500";
-                        elDrinkPriceTag.style.color = "#ffeb3b";
-                        elDrinkSubText.innerText = "[Enter] 回復";
-                        elDrinkSubText.style.color = "#ffeb3b";
-                    } else {
-                        elExhaustDrinkIcon.classList.add('disabled');
-                        elDrinkPriceTag.innerText = "¥500";
-                        elDrinkPriceTag.style.color = "#ff9800";
-                        elDrinkSubText.innerText = "所持金不足";
-                        elDrinkSubText.style.color = "#ff5722";
-                    }
-                } else {
-                    elExhaustDrinkIcon.style.display = 'none';
-                }
 
                 if (exhaustedTimer <= 0) {
                     isExhausted = false;
-                    elExhaustDrinkIcon.style.display = 'none';
                 }
             } else {
-                elExhaustDrinkIcon.style.display = 'none';
                 if (isHolding && stamina > 0 && willpower > 0) {
                     stamina = Math.max(stamina - 0.35, 0);
                     willpower = Math.max(willpower - 0.4, 0);
@@ -347,8 +342,7 @@
                     if (stamina === 0 || willpower === 0) {
                         isExhausted = true;
                         exhaustedTimer = 240; 
-                        hasDrinkUsed = false; 
-                        addLog("【警告】体力と気力が限界を迎え、疲労困憊で動けなくなりました！[Enter]または🧃アイコンをクリック(¥500)");
+                        addLog("【警告】体力と気力が限界を迎え、疲労困憊で動けなくなりました！");
                     }
                 } else {
                     elPlayer.innerText = "🧑‍💻";
