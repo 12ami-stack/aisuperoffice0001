@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI時代の給料泥棒シミュレーター</title>
     <style>
-        :root { --bg-color: #1e1e24; --panel-bg: #2a2a35; --text-color: #f0f0f5; --accent-color: #4caf50; --alert-color: #ff5722; --stamina-color: #2196f3; --will-color: #9c27b0; }
+        :root { --bg-color: #1e1e24; --panel-bg: #2a2a35; --text-color: #f0f0f5; --accent-color: #4caf50; --alert-color: #ff3d00; --stamina-color: #2196f3; --will-color: #9c27b0; }
         body { margin: 0; padding: 30px; background-color: var(--bg-color); color: var(--text-color); font-family: 'Helvetica Neue', Arial, sans-serif; display: flex; flex-direction: column; align-items: center; user-select: none; font-size: 21px; }
         h1 { margin: 0 0 15px 0; font-size: 36px; text-align: center; }
         .description { font-size: 21px; color: #aaa; margin-bottom: 30px; text-align: center; max-width: 900px; line-height: 1.5; }
@@ -24,7 +24,55 @@
         #pc-screen { background: #05050d; border: 3px solid #555; border-radius: 9px; height: 160px; padding: 12px; font-family: 'Courier New', Courier, monospace; font-size: 14px; color: #00ff66; overflow-y: hidden; display: flex; flex-direction: column; gap: 4px; box-shadow: inset 0 0 15px rgba(0,255,0,0.2); }
         .progress-bar-container { width: 100%; background: #333; height: 14px; border-radius: 7px; overflow: hidden; margin-top: 4px; }
         .progress-bar { height: 100%; background: var(--accent-color); width: 0%; transition: width 0.1s linear; }
-        #suspicion-bar { background: var(--alert-color); }
+        
+        /* メモリ型不審度ゲージのデザイン */
+        .status-box.suspicion-box {
+            background: rgba(255, 61, 0, 0.05);
+            border: 1px solid rgba(255, 61, 0, 0.2);
+            border-left: 6px solid var(--alert-color);
+        }
+        #suspicion-text {
+            color: #ff8a80;
+            text-shadow: 0 0 8px rgba(255, 61, 0, 0.4);
+        }
+        .suspicion-container {
+            background: #151110;
+            height: 20px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 61, 0, 0.3);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.6);
+            margin-top: 6px;
+            display: flex;
+            gap: 3px;
+            padding: 3px;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        .suspicion-cell {
+            flex: 1;
+            background: #2a1f1d;
+            border-radius: 2px;
+            transition: background 0.1s, box-shadow 0.1s;
+        }
+        .suspicion-cell.active-low {
+            background: #ff9800;
+            box-shadow: 0 0 6px rgba(255, 152, 0, 0.8);
+        }
+        .suspicion-cell.active-mid {
+            background: #ff3d00;
+            box-shadow: 0 0 8px rgba(255, 61, 0, 0.9);
+        }
+        .suspicion-cell.active-high {
+            background: #d50000;
+            box-shadow: 0 0 10px rgba(213, 0, 0, 1);
+            animation: danger-pulse 0.4s infinite alternate;
+        }
+
+        @keyframes danger-pulse {
+            from { filter: brightness(1); }
+            to { filter: brightness(1.4); }
+        }
+
         #stamina-bar { background: var(--stamina-color); }
         #will-bar { background: var(--will-color); }
         #controls-info { margin-top: 22px; font-size: 19px; color: #bbb; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 9px; line-height: 1.5; max-width: 1080px; }
@@ -87,10 +135,10 @@
                     <div id="task-name" style="font-weight: bold; font-size: 18px;">準備中...</div>
                 </div>
                 
-                <div class="status-box" style="border-left-color: var(--alert-color);">
+                <div class="status-box suspicion-box">
                     <div class="status-title">上司の不審度 (MAXでクビ)</div>
                     <div id="suspicion-text" class="status-value">0%</div>
-                    <div class="progress-bar-container"><div id="suspicion-bar" class="progress-bar"></div></div>
+                    <div id="suspicion-container" class="suspicion-container"></div>
                 </div>
 
                 <div class="status-box" style="border-left-color: var(--stamina-color);"><div class="status-title">体力</div><div id="stamina-text" class="status-value">100%</div><div class="progress-bar-container"><div id="stamina-bar" class="progress-bar" style="background: var(--stamina-color); width: 100%;"></div></div></div>
@@ -101,7 +149,11 @@
                 <div id="pc-screen"><div>[AI-System-Ready]</div><div>自動最適化マクロ起動中...</div></div>
             </div>
         </div>
-        <div id="overlay"><h2 id="overlay-title" style="font-size:36px;">給料泥棒、業務開始</h2><p id="overlay-desc" style="font-size:21px;">黙って座っているだけで、AIが毎秒お金を稼ぎます。</p><button id="start-btn">出勤する</button></div>
+        <div id="overlay">
+            <h2 id="overlay-title" style="font-size:36px;">給料泥棒、業務開始</h2>
+            <p id="overlay-desc" style="font-size:21px;">黙って座っているだけで、AIが毎秒お金を稼ぎます。<br><span style="font-size: 17px; color: #aaa; margin-top: 10px; display: inline-block;">([Enter]キー または ボタンでスタート)</span></p>
+            <button id="start-btn">出勤する</button>
+        </div>
     </div>
     
     <div id="controls-info"><strong>【操作方法】</strong><br>上司(👹)の視界の中にあなたの席(🖥️)が入ると不審度が上昇します。<br>上司の視界にいる間、<span class="key">スペースキー</span> または <span class="key">画面長押し</span> で「仕事やってるフリ（タイピング）」をしてください。<br>※疲労困憊（動けない状態）になった時、<span class="key">Enterキー</span> または右下の <span class="key">🧃アイコン</span> を押すと500円払ってエナジードリンク（🧃）で1回だけ即時回復できます！（所持金が500円未満の場合は使用不可）</div>
@@ -113,11 +165,21 @@
         const playerPos = { x: 270, y: 330 }, deskPos = { x: 270, y: 270 };
         const aiTasks = ["コアビジネス戦略の自動AI生成...", "顧客データベースのサイレント同期...", "社内日報のAIディープフェイク自動提出...", "売上予測の超高速でっち上げ中...", "無駄な会議資料の全自動スライド生成...", "AIによる競合他社の自動ディスブランディング..."];
         
-        const elBoss = document.getElementById('boss'), elSight = document.getElementById('sight'), elPlayer = document.getElementById('player'), elTaskName = document.getElementById('task-name'), elSuspicionBar = document.getElementById('suspicion-bar'), elSuspicionText = document.getElementById('suspicion-text'), elStaminaBar = document.getElementById('stamina-bar'), elStaminaText = document.getElementById('stamina-text'), elWillBar = document.getElementById('will-bar'), elWillText = document.getElementById('will-text'), elScore = document.getElementById('score'), elPcScreen = document.getElementById('pc-screen'), elOverlay = document.getElementById('overlay'), elOverlayTitle = document.getElementById('overlay-title'), elOverlayDesc = document.getElementById('overlay-desc'), elStartBtn = document.getElementById('start-btn'), floor = document.getElementById('office-floor');
+        const elBoss = document.getElementById('boss'), elSight = document.getElementById('sight'), elPlayer = document.getElementById('player'), elTaskName = document.getElementById('task-name'), elSuspicionText = document.getElementById('suspicion-text'), elStaminaBar = document.getElementById('stamina-bar'), elStaminaText = document.getElementById('stamina-text'), elWillBar = document.getElementById('will-bar'), elWillText = document.getElementById('will-text'), elScore = document.getElementById('score'), elPcScreen = document.getElementById('pc-screen'), elOverlay = document.getElementById('overlay'), elOverlayTitle = document.getElementById('overlay-title'), elOverlayDesc = document.getElementById('overlay-desc'), elStartBtn = document.getElementById('start-btn'), floor = document.getElementById('office-floor');
         const elExhaustDrinkIcon = document.getElementById('exhaust-drink-icon');
         const elDrinkPriceTag = document.getElementById('drink-price-tag');
         const elDrinkSubText = document.getElementById('drink-sub-text');
         
+        const totalCells = 20;
+        const elSuspicionContainer = document.getElementById('suspicion-container');
+        const suspicionCells = [];
+        for (let i = 0; i < totalCells; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'suspicion-cell';
+            elSuspicionContainer.appendChild(cell);
+            suspicionCells.push(cell);
+        }
+
         for(let i=60; i<600; i+=60) { 
             let hLine = document.createElement('div'); hLine.className = 'grid-line'; hLine.style.width = '100%'; hLine.style.height = '1px'; hLine.style.top = i+'px'; floor.appendChild(hLine); 
             let vLine = document.createElement('div'); vLine.className = 'grid-line'; vLine.style.width = '1px'; vLine.style.height = '100%'; vLine.style.left = i+'px'; floor.appendChild(vLine); 
@@ -141,6 +203,7 @@
             score = 0; suspicion = 0; stamina = 100; willpower = 100; isHolding = false; isExhausted = false; exhaustedTimer = 0; isGameOver = false; hasDrinkUsed = false;
             boss.x = 30; boss.y = 30; gameActive = true; elOverlay.style.display = 'none'; 
             elExhaustDrinkIcon.style.display = 'none';
+            elScore.innerText = `¥${score.toLocaleString()}`;
             nextTask(); 
             addLog("給料泥棒セッションが開始されました。"); 
             requestAnimationFrame(gameLoop); 
@@ -149,12 +212,12 @@
         function gameOver() { 
             gameActive = false; 
             isGameOver = true;
-            score = 0; // ゲームオーバー時は収入を0円にする
+            score = 0;
             elScore.innerText = `¥${score.toLocaleString()}`;
             elExhaustDrinkIcon.style.display = 'none';
             elOverlay.style.display = 'flex'; 
             elOverlayTitle.innerText = "🚨 クビになりました 🚨"; 
-            elOverlayDesc.innerHTML = `あなたは上司にサボりを見破られました。<br><strong>生涯泥棒獲得賃金: ¥${score.toLocaleString()}</strong><br><span style="font-size: 17px; color: #aaa; margin-top: 10px; display: inline-block;">(Enterキーで再スタート)</span>`; 
+            elOverlayDesc.innerHTML = `あなたは上司にサボりを見破られました。<br><strong>生涯泥棒獲得賃金: ¥${score.toLocaleString()}</strong><br><span style="font-size: 17px; color: #aaa; margin-top: 10px; display: inline-block;">([Enter]キー または下のボタンで再スタート)</span>`; 
             elStartBtn.innerText = "もう一度出勤する"; 
         }
 
@@ -185,7 +248,7 @@
             }
             if(e.code === 'Enter') {
                 e.preventDefault();
-                if(isGameOver) {
+                if(!gameActive) {
                     startGame();
                 } else if(gameActive && isExhausted && !hasDrinkUsed) {
                     tryUseDrink();
@@ -247,11 +310,9 @@
                 elPlayer.innerText = "😵‍💫";
                 isHolding = false;
                 
-                // 疲労困憊中でドリンク未飲みの間、オフィス枠内の右下に🧃アイコンを表示
                 if (!hasDrinkUsed) {
                     elExhaustDrinkIcon.style.display = 'block';
                     
-                    // 所持金に応じて表示やクラスを切り替え
                     if (score >= 500) {
                         elExhaustDrinkIcon.classList.remove('disabled');
                         elDrinkPriceTag.innerText = "¥500";
@@ -312,9 +373,22 @@
                 suspicion = Math.max(suspicion - 0.05, 0); 
             } 
             
-            elSuspicionBar.style.width = suspicion + '%'; 
             elSuspicionText.innerText = Math.floor(suspicion) + '%'; 
             
+            const activeCount = Math.floor((suspicion / 100) * totalCells);
+            suspicionCells.forEach((cell, index) => {
+                cell.className = 'suspicion-cell';
+                if (index < activeCount) {
+                    if (index < 10) {
+                        cell.classList.add('active-low');
+                    } else if (index < 16) {
+                        cell.classList.add('active-mid');
+                    } else {
+                        cell.classList.add('active-high');
+                    }
+                }
+            });
+
             if(suspicion >= 100) { 
                 gameOver(); 
                 return; 
